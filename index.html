@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Unofficial TTL Gear Guide</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:#F1F5F9;font-family:'DM Sans',system-ui,sans-serif;}
+    ::-webkit-scrollbar{width:5px;height:5px;}
+    ::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:8px;}
+    button{cursor:pointer;}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<!-- ★ PASTE YOUR APPS SCRIPT URL BELOW — replace the placeholder string -->
+<script>window.SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz2m1rxyQnvT6L79lCOeapZnS3xQYYUduJQbPZaWyk5-MuZ7ARklEtysb1wnUCbCu1mEQ/exec";</script>
+
+<script type="text/babel">
+const { useState, useEffect, useCallback } = React;
+
+// ── Icons (inline SVG so no extra dependency) ──
+const Icon = ({ d, size=16, color="currentColor", style={} }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color}
+    strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" style={style}>
+    <path d={d}/>
+  </svg>
+);
+const icons = {
+  chevDown:  "M6 9l6 6 6-6",
+  chevRight: "M9 18l6-6-6-6",
+  thumbUp:   "M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14zm-7 11H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3",
+  thumbDown: "M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17",
+  link:      "M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3",
+  plus:      "M12 5v14M5 12h14",
+  search:    "M21 21l-6-6m2-5a7 7 0 1 1-14 0 7 7 0 0 1 14 0",
+  x:         "M18 6L6 18M6 6l12 12",
+  warn:      "M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01",
+  msgPlus:   "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2zM12 7v4M10 9h4",
+  arrowUp:   "M12 19V5M5 12l7-7 7 7",
+  arrowDown: "M12 5v14M5 12l7 7 7-7",
+  pencil:    "M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z",
+  trash:     "M3 6h18M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2",
+};
+
+const SEED = [
+  { id:"s1", cat:"swim", brand:"Orca", model:"Apex Flow", type:"Wetsuit", url:"https://www.orca.com/en-us/apex-flow-women-triathlon-wetsuit", recFor:["women","speed","comfort"], affiliated:false, upvotes:14, downvotes:1, reviews:[{ id:"r1a", text:"Incredible flexibility through the shoulders and hips — the Infinity Yarn panels make a real difference in the water. Runs true to size for most.", name:"Coach Sarah", ts:1000 },{ id:"r1b", text:"First wetsuit I've worn that doesn't feel like a straitjacket by the 500m mark. Highly recommend for women especially.", name:"Jess R", ts:2000 }]},
+  { id:"s2", cat:"swim", brand:"Speedo", model:"Vanquish 2.0", type:"Goggles", url:"https://speedo.com", recFor:["speed","experienced","all"], affiliated:false, upvotes:7, downvotes:0, reviews:[{ id:"r2a", text:"Low-profile lenses reduce drag noticeably. Great seal without overtightening. Anti-fog holds up well.", name:"Mike T", ts:1000 }]},
+  { id:"s3", cat:"bike", brand:"Garmin", model:"Varia RTL515", type:"Radar / taillight", url:"https://garmin.com", recFor:["all"], affiliated:false, upvotes:21, downvotes:2, reviews:[{ id:"r3a", text:"Rear radar up to 140m. Integrates with Garmin and Wahoo heads. Possibly the single best safety purchase for solo training.", name:"Mike T", ts:1000 }]},
+  { id:"s4", cat:"bike", brand:"Castelli", model:"Espresso Bib Short", type:"Bib shorts", url:"https://www.castelli-cycling.com/US/en/Woman/Collection/Espresso/c/Wom-Col-Esp", recFor:["women","comfort","speed"], affiliated:false, upvotes:9, downvotes:0, reviews:[{ id:"r4a", text:"The KISS Air 2 chamois is genuinely comfortable for 5hr+ rides. Italian sizing — check the chart.", name:"Dana K", ts:1000 }]},
+  { id:"s5", cat:"run", brand:"New Balance", model:"SC Elite v5", type:"Race shoe", url:"https://newbalance.com", recFor:["speed","experienced"], affiliated:false, upvotes:18, downvotes:2, reviews:[{ id:"r5a", text:"Phenomenal energy return on FuelCell foam. Save for race day — not a brick shoe.", name:"Jess R", ts:1000 }]},
+  { id:"s6", cat:"nutrition", brand:"Tailwind", model:"Endurance Fuel", type:"All-in-one drink mix", url:"https://tailwindnutrition.com", recFor:["all","beginner","comfort"], affiliated:false, upvotes:11, downvotes:1, reviews:[{ id:"r6a", text:"Complete calories, electrolytes, hydration in one bottle. Much gentler on the stomach than most competitors.", name:"Anonymous", ts:1000 }]},
+  { id:"s7", cat:"recovery", brand:"Theragun", model:"Pro Gen 6", type:"Percussive massager", url:"https://therabody.com", recFor:["all","experienced","durability"], affiliated:false, upvotes:9, downvotes:1, reviews:[{ id:"r7a", text:"Quietest Theragun yet. Five attachments cover everything. App integration for guided protocols is genuinely useful post-race.", name:"Coach Sarah", ts:1000 }]},
+  { id:"s8", cat:"coffee", brand:"Onyx", model:"Southern Weather", type:"Filter / espresso", url:"https://onyxcoffeelab.com", recFor:["all"], affiliated:false, upvotes:16, downvotes:1, reviews:[{ id:"r8a", text:"Bright, fruit-forward, works as filter or espresso. Unofficial official coffee of post-brick cafe stops.", name:"Alex B", ts:1000 }]},
+  { id:"s9", cat:"travel", brand:"EVOC", model:"Bike Travel Bag Pro", type:"Bike case", url:"https://evoc.com", recFor:["all","durability"], affiliated:false, upvotes:8, downvotes:1, reviews:[{ id:"r9a", text:"One of the lightest hard-shell cases. Fits most aero bikes with wheels off. Good airline-handling record.", name:"Dana K", ts:1000 }]},
+];
+
+const CATS = [
+  { id:"swim",      label:"Swim",                     icon:"🏊", accent:"#0284C7" },
+  { id:"bike",      label:"Bike",                     icon:"🚴", accent:"#16A34A" },
+  { id:"run",       label:"Run",                      icon:"🏃", accent:"#EA580C" },
+  { id:"nutrition", label:"Nutrition & hydration",    icon:"🥤", accent:"#DC2626" },
+  { id:"recovery",  label:"Recovery",                 icon:"🛁", accent:"#7C3AED" },
+  { id:"travel",    label:"Travel & gear transport",  icon:"✈️", accent:"#0F4C81" },
+  { id:"fitness",   label:"Other fitness & training", icon:"💪", accent:"#B45309" },
+  { id:"locations", label:"Locations & races",        icon:"📍", accent:"#0E7490" },
+  { id:"coffee",    label:"Coffee",                   icon:"☕", accent:"#78350F" },
+];
+
+const REC_OPTS = [
+  { id:"women",       label:"Women",            color:"#DB2777" },
+  { id:"men",         label:"Men",              color:"#2563EB" },
+  { id:"all",         label:"All / non-binary", color:"#7C3AED" },
+  { id:"xl",          label:"XL / plus",        color:"#D97706" },
+  { id:"xs",          label:"XS / petite",      color:"#0891B2" },
+  { id:"adaptive",    label:"Adaptive",         color:"#059669" },
+  { id:"speed",       label:"Speed",            color:"#DC2626" },
+  { id:"comfort",     label:"Comfort",          color:"#0284C7" },
+  { id:"durability",  label:"Durability",       color:"#92400E" },
+  { id:"budget",      label:"Budget-friendly",  color:"#4B5563" },
+  { id:"beginner",    label:"Beginners",        color:"#4D7C0F" },
+  { id:"experienced", label:"Experienced",      color:"#3730A3" },
+  { id:"other",       label:"Other",            color:"#6B7280" },
+];
+
+const net = e => (e.upvotes||0) - (e.downvotes||0);
+
+// ── API helpers ──
+async function api(action, params={}) {
+  const url = window.SCRIPT_URL;
+  if (!url || url.includes("PASTE_YOUR")) throw new Error("Apps Script URL not configured");
+  if (action === "get" || action === "vote") {
+    const qs = new URLSearchParams({ action, ...params });
+    const r = await fetch(`${url}?${qs}`);
+    return r.json();
+  }
+  const r = await fetch(url, {
+    method:"POST", body: JSON.stringify({ action, ...params }),
+    headers:{ "Content-Type":"application/json" }
+  });
+  return r.json();
+}
+
+function sortRows(rows, col, dir) {
+  const aff = rows.filter(e => e.affiliated);
+  const reg = rows.filter(e => !e.affiliated);
+  const cmp = (a, b) => {
+    let av, bv;
+    if      (col==="votes")   { av=net(a);   bv=net(b); }
+    else if (col==="brand")   { av=(a.brand||"").toLowerCase();  bv=(b.brand||"").toLowerCase(); }
+    else if (col==="model")   { av=(a.model||"").toLowerCase();  bv=(b.model||"").toLowerCase(); }
+    else if (col==="type")    { av=(a.type||"").toLowerCase();   bv=(b.type||"").toLowerCase(); }
+    else if (col==="reviews") { av=(a.reviews||[]).length; bv=(b.reviews||[]).length; }
+    else return 0;
+    if (typeof av==="string") return dir==="asc" ? av.localeCompare(bv) : bv.localeCompare(av);
+    return dir==="asc" ? av-bv : bv-av;
+  };
+  return [...reg.sort(cmp), ...aff.sort(cmp)];
+}
+
+function RecTag({ id }) {
+  const o = REC_OPTS.find(x => x.id===id);
+  if (!o) return null;
+  return <span style={{ display:"inline-block", background:o.color+"18", color:o.color,
+    border:`1px solid ${o.color}40`, borderRadius:4, padding:"1px 6px",
+    fontSize:10.5, fontWeight:500, lineHeight:1.7, whiteSpace:"nowrap", marginBottom:2, marginRight:2 }}>{o.label}</span>;
+}
+
+function SingleReview({ review, onEdit, onDelete }) {
+  const [open, setOpen] = useState(false);
+  const [confirm, setConfirm] = useState(false);
+  const long = (review.text||"").length > 110;
+  return (
+    <div style={{ paddingBottom:7, borderBottom:"1px solid #F1F5F9", marginBottom:7 }}>
+      <div style={{ fontSize:12.5, lineHeight:1.6, color:"#374151", overflow:"hidden",
+        display:open?"block":"-webkit-box", WebkitLineClamp:open?undefined:2, WebkitBoxOrient:"vertical" }}>
+        {review.text}
+      </div>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:2, gap:4 }}>
+        <span style={{ fontSize:11, color:"#94A3B8", fontStyle:"italic" }}>— {review.name||"Anonymous"}</span>
+        <div style={{ display:"flex", alignItems:"center", gap:4, flexShrink:0 }}>
+          {long && <button onClick={()=>setOpen(!o=>!o)} style={{ background:"none",border:"none",padding:0,cursor:"pointer",color:"#6366F1",fontSize:11,fontWeight:500,textDecoration:"underline" }}>{open?"less ▲":"more ▼"}</button>}
+          <button onClick={()=>onEdit(review)} style={{ background:"none",border:"none",padding:"2px",cursor:"pointer",display:"flex",color:"#94A3B8" }}><Icon d={icons.pencil} size={11}/></button>
+          {!confirm
+            ? <button onClick={()=>setConfirm(true)} style={{ background:"none",border:"none",padding:"2px",cursor:"pointer",display:"flex",color:"#94A3B8" }}><Icon d={icons.trash} size={11}/></button>
+            : <span style={{ display:"flex",alignItems:"center",gap:3 }}>
+                <button onClick={()=>{onDelete(review.id);setConfirm(false);}} style={{ background:"#FEF2F2",border:"1px solid #FECACA",color:"#DC2626",borderRadius:4,padding:"1px 6px",fontSize:10,cursor:"pointer" }}>delete</button>
+                <button onClick={()=>setConfirm(false)} style={{ background:"none",border:"none",color:"#94A3B8",fontSize:10,cursor:"pointer" }}>cancel</button>
+              </span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ReviewsCell({ entry, onAddReview, onEditReview, onDeleteReview }) {
+  const [expanded, setExpanded] = useState(false);
+  const reviews = entry.reviews||[];
+  const shown = expanded ? reviews : reviews.slice(0,1);
+  return (
+    <div style={{ minWidth:200 }}>
+      {reviews.length===0 && <span style={{ color:"#CBD5E1",fontSize:12 }}>No reviews yet</span>}
+      {shown.map(r=><SingleReview key={r.id} review={r} onEdit={rv=>onEditReview(entry.id,rv)} onDelete={rid=>onDeleteReview(entry.id,rid)}/>)}
+      <div style={{ display:"flex",alignItems:"center",gap:8,marginTop:2,flexWrap:"wrap" }}>
+        {reviews.length>1 && <button onClick={()=>setExpanded(!expanded)} style={{ background:"none",border:"none",padding:0,cursor:"pointer",color:"#6366F1",fontSize:11,fontWeight:500,textDecoration:"underline" }}>{expanded?"hide ▲":`+${reviews.length-1} more ▼`}</button>}
+        <button onClick={()=>onAddReview(entry.id)} style={{ background:"none",border:"1px solid #E2E8F0",borderRadius:5,padding:"2px 8px",cursor:"pointer",fontSize:11,color:"#6B7280",display:"flex",alignItems:"center",gap:3 }}>
+          <Icon d={icons.msgPlus} size={11}/> add review
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SortTh({ label, col, sort, onSort, center, width }) {
+  const active = sort.col===col;
+  return (
+    <th onClick={()=>onSort(col)} style={{ padding:"7px 10px",textAlign:center?"center":"left",color:active?"#1E293B":"#6B7280",fontSize:11,fontWeight:500,textTransform:"uppercase",letterSpacing:0.5,borderBottom:"1px solid #E2E8F0",cursor:"pointer",userSelect:"none",whiteSpace:"nowrap",background:"#F8FAFC",width:width||undefined }}>
+      {label}{active&&<Icon d={sort.dir==="desc"?icons.arrowDown:icons.arrowUp} size={10} style={{ marginLeft:3,verticalAlign:"middle" }}/>}
+    </th>
+  );
+}
+
+function VoteCell({ entry, onUp, onDown }) {
+  const n = net(entry);
+  let fg="#94A3B8",bg="#F8FAFC",bd="#E2E8F0";
+  if(n>0&&n<6){fg="#16A34A";bg="#F0FDF4";bd="#86EFAC";}
+  if(n>=6&&n<16){fg="#2563EB";bg="#EFF6FF";bd="#93C5FD";}
+  if(n>=16){fg="#EA580C";bg="#FFF7ED";bd="#FED7AA";}
+  if(n<0){fg="#DC2626";bg="#FFF1F2";bd="#FECACA";}
+  return (
+    <div style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:4 }}>
+      <div style={{ display:"flex",gap:4 }}>
+        <button onClick={onUp} style={{ background:n>0?bg:"#F8FAFC",border:`1px solid ${n>0?bd:"#E2E8F0"}`,borderRadius:6,padding:"3px 8px",cursor:"pointer",display:"flex",alignItems:"center",gap:2 }}>
+          <Icon d={icons.thumbUp} size={12} color={n>0?fg:"#94A3B8"}/><span style={{ fontSize:11,fontWeight:500,color:n>0?fg:"#94A3B8" }}>{entry.upvotes||0}</span>
+        </button>
+        <button onClick={onDown} style={{ background:n<0?"#FFF1F2":"#F8FAFC",border:`1px solid ${n<0?"#FECACA":"#E2E8F0"}`,borderRadius:6,padding:"3px 8px",cursor:"pointer",display:"flex",alignItems:"center",gap:2 }}>
+          <Icon d={icons.thumbDown} size={12} color={n<0?"#DC2626":"#94A3B8"}/><span style={{ fontSize:11,fontWeight:500,color:n<0?"#DC2626":"#94A3B8" }}>{entry.downvotes||0}</span>
+        </button>
+      </div>
+      <span style={{ fontSize:12,fontWeight:500,color:fg,background:bg,border:`1px solid ${bd}`,borderRadius:5,padding:"0 8px",lineHeight:1.8 }}>{n>0?"+":""}{n}</span>
+    </div>
+  );
+}
+
+const FLD = { display:"block",fontSize:12,fontWeight:500,color:"#475569",marginBottom:5,marginTop:14 };
+const INP = { width:"100%",padding:"8px 11px",borderRadius:7,border:"1px solid #E2E8F0",fontSize:13,color:"#1E293B",outline:"none",background:"#FAFAFA",fontFamily:"'DM Sans',sans-serif" };
+const emptyForm = (cat="") => ({ cat,brand:"",model:"",type:"",url:"",recFor:[],affiliated:false });
+
+function App() {
+  const [entries, setEntries] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [apiErr,  setApiErr]  = useState(null);
+  const [collapsed, setCollapsed] = useState({});
+  const [search,  setSearch]  = useState("");
+  const [sorts,   setSorts]   = useState({});
+  const [disclaimer, setDisclaimer] = useState(true);
+  const [modal,   setModal]   = useState(null);
+  const [form,    setForm]    = useState(emptyForm());
+  const [reviewForm, setReviewForm] = useState({ text:"",name:"" });
+  const [formErr, setFormErr] = useState("");
+  const [saving,  setSaving]  = useState(false);
+
+  // Load from API or fall back to seed
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await api("get");
+        setEntries(Array.isArray(data) && data.length ? data : SEED);
+      } catch(e) {
+        setApiErr("Could not reach backend — showing sample data. Configure SCRIPT_URL to enable live data.");
+        setEntries(SEED);
+      }
+      setLoading(false);
+    })();
+  }, []);
+
+  const reload = async () => {
+    try { const data = await api("get"); if(Array.isArray(data)) setEntries(data); } catch(_) {}
+  };
+
+  const withSave = async (fn) => { setSaving(true); try { await fn(); await reload(); } catch(e) { alert("Save failed: "+e.message); } finally { setSaving(false); } };
+
+  const openAdd  = (cat="") => { setForm(emptyForm(cat)); setFormErr(""); setModal({ type:"affiliation", cat }); };
+  const openEdit = (entry)  => { setForm({ cat:entry.cat,brand:entry.brand||"",model:entry.model||"",type:entry.type||"",url:entry.url||"",recFor:entry.recFor||[],affiliated:!!entry.affiliated }); setFormErr(""); setModal({ type:"editEntry",entryId:entry.id }); };
+
+  const submitAdd  = () => { if(!form.model.trim()){setFormErr("Model name is required.");return;} withSave(()=>api("add",{ entry:{ id:Date.now().toString(),...form,affiliated:modal?.affiliated||false,upvotes:0,downvotes:0,reviews:[] } })); setModal(null); };
+  const submitEdit = () => { if(!form.model.trim()){setFormErr("Model name is required.");return;} withSave(()=>api("update",{ entry:{ id:modal.entryId,...form } })); setModal(null); };
+  const deleteEntry= (id) => { withSave(()=>api("delete",{ id })); setModal(null); };
+
+  const upvote   = (id) => withSave(()=>api("vote",{ id,dir:"up" }));
+  const downvote = (id) => withSave(()=>api("vote",{ id,dir:"down" }));
+
+  const submitReview     = () => { if(!reviewForm.text.trim())return; withSave(()=>api("addReview",{ entryId:modal.entryId, review:{ id:Date.now()+"r",...reviewForm,name:reviewForm.name||"Anonymous",ts:Date.now() } })); setModal(null); };
+  const submitEditReview = () => { if(!reviewForm.text.trim())return; withSave(()=>api("editReview",{ entryId:modal.entryId, review:{ ...modal.review,...reviewForm,name:reviewForm.name||"Anonymous" } })); setModal(null); };
+  const deleteReview     = (entryId,reviewId) => withSave(()=>api("deleteReview",{ entryId,reviewId }));
+
+  const toggle  = (id) => setCollapsed(p=>({...p,[id]:!p[id]}));
+  const setSort = (catId,col) => setSorts(p=>{ const cur=p[catId]||{col:"votes",dir:"desc"}; return {...p,[catId]:{col,dir:cur.col===col?(cur.dir==="desc"?"asc":"desc"):(col==="votes"?"desc":"asc")}}; });
+
+  const q = search.toLowerCase();
+  const getRows = (catId) => {
+    const sort = sorts[catId]||{col:"votes",dir:"desc"};
+    const rows = entries.filter(e=>e.cat===catId&&(!search||[e.brand,e.model,e.type,...(e.reviews||[]).flatMap(r=>[r.text,r.name])].some(f=>f?.toLowerCase().includes(q))));
+    return sortRows(rows,sort.col,sort.dir);
+  };
+
+  const modalEntry = modal?.entryId ? entries.find(e=>e.id===modal.entryId) : null;
+  const isEditMode = modal?.type==="editEntry";
+
+  const EntryForm = ({ onSubmit, onCancel, submitLabel }) => (
+    <div style={{ background:"white",borderRadius:14,padding:28,width:"100%",maxWidth:540,boxShadow:"0 24px 64px rgba(0,0,0,0.2)" }}>
+      <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6 }}>
+        <span style={{ fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:700,color:"#0F172A" }}>{isEditMode?"Edit entry":"Add a gear pick"}</span>
+        <button onClick={onCancel} style={{ background:"none",border:"none",display:"flex" }}><Icon d={icons.x} size={19} color="#94A3B8"/></button>
+      </div>
+      <p style={{ fontSize:12,color:"#94A3B8" }}>Only model name is required.</p>
+      {formErr&&<div style={{ background:"#FEF2F2",border:"1px solid #FCA5A5",color:"#B91C1C",borderRadius:7,padding:"8px 12px",fontSize:12,marginTop:10 }}>{formErr}</div>}
+      <label style={FLD}>Category</label>
+      <select value={form.cat} onChange={e=>setForm(p=>({...p,cat:e.target.value}))} style={INP}>
+        <option value="">Select…</option>
+        {CATS.map(c=><option key={c.id} value={c.id}>{c.icon} {c.label}</option>)}
+      </select>
+      <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12 }}>
+        <div><label style={FLD}>Brand</label><input value={form.brand} onChange={e=>setForm(p=>({...p,brand:e.target.value}))} placeholder="e.g. Orca" style={INP}/></div>
+        <div><label style={FLD}>Model *</label><input value={form.model} onChange={e=>setForm(p=>({...p,model:e.target.value}))} placeholder="e.g. Apex Flow" style={INP}/></div>
+      </div>
+      <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12 }}>
+        <div><label style={FLD}>Type</label><input value={form.type} onChange={e=>setForm(p=>({...p,type:e.target.value}))} placeholder="e.g. Wetsuit" style={INP}/></div>
+        <div><label style={FLD}>URL</label><input value={form.url} onChange={e=>setForm(p=>({...p,url:e.target.value}))} placeholder="https://…" style={INP}/></div>
+      </div>
+      {isEditMode&&(
+        <div style={{ marginTop:14 }}>
+          <label style={{ ...FLD,marginTop:0 }}>Affiliation</label>
+          <div style={{ display:"flex",gap:10 }}>
+            {[{val:false,label:"Independent"},{val:true,label:"Affiliated / sponsored"}].map(opt=>(
+              <button key={String(opt.val)} onClick={()=>setForm(p=>({...p,affiliated:opt.val}))} style={{ flex:1,padding:"8px",borderRadius:7,border:`1.5px solid ${form.affiliated===opt.val?(opt.val?"#E2E8F0":"#16A34A"):"#E2E8F0"}`,background:form.affiliated===opt.val?(opt.val?"#F8FAFC":"#F0FDF4"):"white",color:form.affiliated===opt.val?(opt.val?"#64748B":"#16A34A"):"#6B7280",fontSize:12,fontWeight:500,cursor:"pointer" }}>{opt.label}</button>
+            ))}
+          </div>
+        </div>
+      )}
+      <label style={FLD}>Good for</label>
+      <div style={{ display:"flex",flexWrap:"wrap",gap:6,padding:"4px 0 8px" }}>
+        {REC_OPTS.map(o=>{ const sel=form.recFor.includes(o.id); return <button key={o.id} onClick={()=>setForm(p=>({...p,recFor:sel?p.recFor.filter(x=>x!==o.id):[...p.recFor,o.id]}))} style={{ border:`1.5px solid ${sel?o.color:"#E2E8F0"}`,background:sel?o.color+"18":"white",color:sel?o.color:"#6B7280",borderRadius:6,padding:"4px 10px",fontSize:12,fontWeight:500,cursor:"pointer" }}>{o.label}</button>; })}
+      </div>
+      <div style={{ display:"flex",gap:10,marginTop:20 }}>
+        <button onClick={onCancel} style={{ flex:1,padding:"10px",borderRadius:8,border:"1px solid #E2E8F0",background:"white",color:"#64748B",fontWeight:500,cursor:"pointer",fontSize:13 }}>Cancel</button>
+        <button onClick={onSubmit} disabled={saving} style={{ flex:2,padding:"10px",borderRadius:8,border:"none",background:!form.model.trim()||saving?"#CBD5E1":"#FF6B35",color:"white",fontWeight:500,fontSize:13,cursor:"pointer" }}>{saving?"Saving…":submitLabel}</button>
+      </div>
+      <p style={{ fontSize:11,color:"#CBD5E1",marginTop:12,textAlign:"center" }}>Not an official TTL endorsement.</p>
+    </div>
+  );
+
+  return (
+    <div style={{ fontFamily:"'DM Sans',system-ui,sans-serif",background:"#F1F5F9",minHeight:"100vh" }}>
+      <header style={{ background:"#0F172A",padding:"18px 24px",display:"flex",alignItems:"center",gap:16,flexWrap:"wrap" }}>
+        <div style={{ flex:"0 0 auto" }}>
+          <div style={{ fontFamily:"'Barlow Condensed',sans-serif",fontSize:26,fontWeight:700,color:"#F8FAFC",letterSpacing:1 }}>Unofficial TTL Gear Guide</div>
+          <div style={{ fontSize:12,color:"#64748B",marginTop:1 }}>Community picks for triathlon.</div>
+        </div>
+        <div style={{ flex:1,minWidth:180,display:"flex",alignItems:"center",background:"#1E293B",border:"1px solid #334155",borderRadius:8,padding:"8px 13px",gap:8 }}>
+          <Icon d={icons.search} size={15} color="#64748B" style={{ flexShrink:0 }}/>
+          <input placeholder="Search…" value={search} onChange={e=>setSearch(e.target.value)} style={{ background:"none",border:"none",outline:"none",color:"#F1F5F9",fontSize:13,width:"100%",fontFamily:"inherit" }}/>
+          {search&&<button onClick={()=>setSearch("")} style={{ background:"none",border:"none",display:"flex",padding:0 }}><Icon d={icons.x} size={14} color="#64748B"/></button>}
+        </div>
+        <button onClick={()=>openAdd()} style={{ background:"#FF6B35",color:"white",border:"none",borderRadius:8,padding:"9px 18px",fontWeight:500,fontSize:13,display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap" }}>
+          <Icon d={icons.plus} size={15} color="white"/> Add a pick
+        </button>
+      </header>
+
+      <div style={{ background:"#FFFBEB",borderBottom:"1px solid #FDE68A" }}>
+        <div onClick={()=>setDisclaimer(!disclaimer)} style={{ padding:"10px 24px",display:"flex",gap:9,alignItems:"flex-start",cursor:"pointer" }}>
+          <Icon d={icons.warn} size={14} color="#B45309" style={{ flexShrink:0,marginTop:2 }}/>
+          <div style={{ flex:1,fontSize:12,color:"#92400E",lineHeight:1.6 }}>
+            <strong>Disclaimer:</strong> {disclaimer?"This list is not an official endorsement by TTL leadership or any associated organisation. Recommendations reflect personal experience only. Caveat emptor: do your own research before purchasing. Product quality, pricing, and availability may change.":"Not an official TTL endorsement. Personal experience only. Caveat emptor."}
+          </div>
+          <span style={{ color:"#D97706",fontSize:11,flexShrink:0 }}>{disclaimer?"▲":"▼"}</span>
+        </div>
+      </div>
+
+      {apiErr&&<div style={{ background:"#FEF9C3",borderBottom:"1px solid #FDE047",padding:"8px 24px",fontSize:12,color:"#854D0E" }}>⚠ {apiErr}</div>}
+
+      <main style={{ padding:"20px 24px",maxWidth:1400,margin:"0 auto" }}>
+        {loading&&<div style={{ textAlign:"center",color:"#94A3B8",fontSize:14,padding:40 }}>Loading…</div>}
+        {!loading&&CATS.map(cat=>{
+          const rows = getRows(cat.id);
+          if(search&&rows.length===0) return null;
+          const open = !collapsed[cat.id];
+          const sort = sorts[cat.id]||{col:"votes",dir:"desc"};
+          return (
+            <section key={cat.id} style={{ marginBottom:14,borderRadius:10,border:"1px solid #E2E8F0",background:"white",overflow:"hidden",boxShadow:"0 1px 2px rgba(0,0,0,0.05)" }}>
+              <div onClick={()=>toggle(cat.id)} style={{ padding:"13px 18px",display:"flex",alignItems:"center",gap:10,cursor:"pointer",background:cat.accent+"0A",borderBottom:open?`1px solid ${cat.accent}25`:"none",userSelect:"none" }}>
+                <span style={{ fontSize:18 }}>{cat.icon}</span>
+                <span style={{ fontFamily:"'Barlow Condensed',sans-serif",fontSize:19,fontWeight:700,color:cat.accent,letterSpacing:0.5 }}>{cat.label.toUpperCase()}</span>
+                <span style={{ fontSize:11,color:"#94A3B8",background:"#F1F5F9",border:"1px solid #E2E8F0",borderRadius:10,padding:"1px 8px" }}>{rows.length}</span>
+                <div style={{ flex:1 }}/>
+                <button onClick={e=>{e.stopPropagation();openAdd(cat.id);}} style={{ background:cat.accent+"15",color:cat.accent,border:`1px solid ${cat.accent}35`,borderRadius:6,padding:"4px 10px",fontSize:12,fontWeight:500,display:"flex",alignItems:"center",gap:3 }}>
+                  <Icon d={icons.plus} size={12} color={cat.accent}/> Add
+                </button>
+                <Icon d={open?icons.chevDown:icons.chevRight} size={17} color="#94A3B8"/>
+              </div>
+              {open&&(
+                <div style={{ overflowX:"auto" }}>
+                  {rows.length===0
+                    ?<div style={{ padding:"22px 18px",textAlign:"center",fontSize:13,color:"#94A3B8" }}>No entries yet — be the first!</div>
+                    :<table style={{ width:"100%",borderCollapse:"collapse",fontSize:13 }}>
+                      <thead><tr>
+                        <SortTh label="Votes"   col="votes"   sort={sort} onSort={c=>setSort(cat.id,c)} center width={90}/>
+                        <SortTh label="Brand"   col="brand"   sort={sort} onSort={c=>setSort(cat.id,c)} width={110}/>
+                        <SortTh label="Model"   col="model"   sort={sort} onSort={c=>setSort(cat.id,c)} width={150}/>
+                        <SortTh label="Type"    col="type"    sort={sort} onSort={c=>setSort(cat.id,c)} width={120}/>
+                        <th style={{ padding:"7px 10px",textAlign:"center",color:"#6B7280",fontSize:11,fontWeight:500,textTransform:"uppercase",letterSpacing:0.5,borderBottom:"1px solid #E2E8F0",background:"#F8FAFC",width:50 }}>Link</th>
+                        <th style={{ padding:"7px 10px",textAlign:"left",color:"#6B7280",fontSize:11,fontWeight:500,textTransform:"uppercase",letterSpacing:0.5,borderBottom:"1px solid #E2E8F0",background:"#F8FAFC",minWidth:160 }}>Good for</th>
+                        <SortTh label="Reviews" col="reviews" sort={sort} onSort={c=>setSort(cat.id,c)}/>
+                        <th style={{ padding:"7px 10px",background:"#F8FAFC",borderBottom:"1px solid #E2E8F0",width:64 }}/>
+                      </tr></thead>
+                      <tbody>
+                        {rows.map((e,i)=>{
+                          const isAff=e.affiliated;
+                          return (
+                            <tr key={e.id} style={{ borderBottom:"1px solid #F1F5F9",background:isAff?"#F8FAFC":i%2===0?"white":"#FAFAFA",opacity:isAff?0.72:1 }}>
+                              <td style={{ padding:"10px",textAlign:"center",verticalAlign:"top" }}>
+                                <VoteCell entry={e} onUp={()=>upvote(e.id)} onDown={()=>downvote(e.id)}/>
+                                {isAff&&<div style={{ fontSize:10,color:"#94A3B8",marginTop:5,fontStyle:"italic",background:"#F1F5F9",borderRadius:4,padding:"1px 5px" }}>affiliated</div>}
+                              </td>
+                              <td style={{ padding:"10px",fontWeight:500,color:isAff?"#94A3B8":"#1E293B",verticalAlign:"top" }}>{e.brand||<span style={{ color:"#CBD5E1" }}>—</span>}</td>
+                              <td style={{ padding:"10px",color:isAff?"#94A3B8":"#334155",verticalAlign:"top" }}>{e.model}</td>
+                              <td style={{ padding:"10px",color:"#64748B",fontSize:12,verticalAlign:"top" }}>{e.type||<span style={{ color:"#CBD5E1" }}>—</span>}</td>
+                              <td style={{ padding:"10px",textAlign:"center",verticalAlign:"top" }}>
+                                {e.url?<a href={e.url} target="_blank" rel="noopener noreferrer" style={{ color:"#6366F1" }}><Icon d={icons.link} size={14}/></a>:<span style={{ color:"#E2E8F0" }}>—</span>}
+                              </td>
+                              <td style={{ padding:"10px",verticalAlign:"top" }}>
+                                <div style={{ display:"flex",flexWrap:"wrap",gap:2 }}>
+                                  {(e.recFor||[]).map(r=><RecTag key={r} id={r}/>)}
+                                  {(!e.recFor||e.recFor.length===0)&&<span style={{ color:"#CBD5E1",fontSize:12 }}>—</span>}
+                                </div>
+                              </td>
+                              <td style={{ padding:"10px",verticalAlign:"top",minWidth:220,maxWidth:320 }}>
+                                <ReviewsCell entry={e}
+                                  onAddReview={id=>{setReviewForm({text:"",name:""});setModal({type:"addReview",entryId:id});}}
+                                  onEditReview={(eid,rv)=>{setReviewForm({text:rv.text,name:rv.name||""});setModal({type:"editReview",entryId:eid,review:rv});}}
+                                  onDeleteReview={deleteReview}/>
+                              </td>
+                              <td style={{ padding:"10px",verticalAlign:"top",textAlign:"center" }}>
+                                <div style={{ display:"flex",flexDirection:"column",gap:6,alignItems:"center" }}>
+                                  <button onClick={()=>openEdit(e)} style={{ background:"#F8FAFC",border:"1px solid #E2E8F0",borderRadius:6,padding:"4px 7px",display:"flex",alignItems:"center",gap:3,fontSize:11,color:"#64748B" }}><Icon d={icons.pencil} size={11}/> edit</button>
+                                  <button onClick={()=>setModal({type:"deleteEntry",entryId:e.id})} style={{ background:"#FFF1F2",border:"1px solid #FECACA",borderRadius:6,padding:"4px 7px",display:"flex",alignItems:"center",gap:3,fontSize:11,color:"#DC2626" }}><Icon d={icons.trash} size={11}/> delete</button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>}
+                </div>
+              )}
+            </section>
+          );
+        })}
+      </main>
+
+      {/* Affiliation check */}
+      {modal?.type==="affiliation"&&(
+        <div style={{ position:"fixed",inset:0,background:"rgba(15,23,42,0.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999,padding:20 }}>
+          <div style={{ background:"white",borderRadius:14,padding:32,width:"100%",maxWidth:440,boxShadow:"0 24px 64px rgba(0,0,0,0.2)" }}>
+            <div style={{ fontSize:18,fontWeight:500,color:"#0F172A",marginBottom:10 }}>Before you submit</div>
+            <p style={{ fontSize:13,color:"#475569",lineHeight:1.75,marginBottom:24 }}>Are you affiliated with or sponsored by the company you're recommending?<br/><br/><span style={{ fontSize:12,color:"#94A3B8" }}>Affiliated submissions are welcome — they'll be clearly labelled.</span></p>
+            <div style={{ display:"flex",gap:12 }}>
+              <button onClick={()=>{setForm(p=>({...p,affiliated:false}));setModal({type:"addEntry",affiliated:false,cat:modal.cat});}} style={{ flex:1,padding:"12px",borderRadius:9,border:"1.5px solid #16A34A",background:"#F0FDF4",color:"#16A34A",fontWeight:500,fontSize:13 }}>No — independent user</button>
+              <button onClick={()=>{setForm(p=>({...p,affiliated:true}));setModal({type:"addEntry",affiliated:true,cat:modal.cat});}} style={{ flex:1,padding:"12px",borderRadius:9,border:"1.5px solid #E2E8F0",background:"#F8FAFC",color:"#64748B",fontWeight:500,fontSize:13 }}>Yes — I have an affiliation</button>
+            </div>
+            <button onClick={()=>setModal(null)} style={{ background:"none",border:"none",color:"#94A3B8",fontSize:12,marginTop:16,width:"100%",textAlign:"center" }}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {/* Add / Edit entry */}
+      {(modal?.type==="addEntry"||modal?.type==="editEntry")&&(
+        <div style={{ position:"fixed",inset:0,background:"rgba(15,23,42,0.6)",display:"flex",alignItems:"flex-start",justifyContent:"center",zIndex:999,padding:"40px 20px",overflowY:"auto" }}>
+          <EntryForm onSubmit={isEditMode?submitEdit:submitAdd} onCancel={()=>setModal(null)} submitLabel={isEditMode?"Save changes":"Submit pick"}/>
+        </div>
+      )}
+
+      {/* Delete confirm */}
+      {modal?.type==="deleteEntry"&&(
+        <div style={{ position:"fixed",inset:0,background:"rgba(15,23,42,0.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999,padding:20 }}>
+          <div style={{ background:"white",borderRadius:14,padding:28,width:"100%",maxWidth:380,boxShadow:"0 24px 64px rgba(0,0,0,0.2)" }}>
+            <div style={{ fontSize:17,fontWeight:500,color:"#0F172A",marginBottom:10 }}>Delete this entry?</div>
+            <p style={{ fontSize:13,color:"#64748B",lineHeight:1.6,marginBottom:20 }}>{modalEntry&&<><strong>{modalEntry.brand?`${modalEntry.brand} `:""}{modalEntry.model}</strong> and all its reviews will be permanently removed.</>}</p>
+            <div style={{ display:"flex",gap:10 }}>
+              <button onClick={()=>setModal(null)} style={{ flex:1,padding:"10px",borderRadius:8,border:"1px solid #E2E8F0",background:"white",color:"#64748B",fontWeight:500,cursor:"pointer",fontSize:13 }}>Cancel</button>
+              <button onClick={()=>deleteEntry(modal.entryId)} style={{ flex:1,padding:"10px",borderRadius:8,border:"none",background:"#DC2626",color:"white",fontWeight:500,cursor:"pointer",fontSize:13 }}>Yes, delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add / Edit review */}
+      {(modal?.type==="addReview"||modal?.type==="editReview")&&(
+        <div style={{ position:"fixed",inset:0,background:"rgba(15,23,42,0.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999,padding:20 }}>
+          <div style={{ background:"white",borderRadius:14,padding:28,width:"100%",maxWidth:460,boxShadow:"0 24px 64px rgba(0,0,0,0.2)" }}>
+            <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8 }}>
+              <span style={{ fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:700,color:"#0F172A" }}>{modal?.type==="editReview"?"Edit review":"Add a review"}</span>
+              <button onClick={()=>setModal(null)} style={{ background:"none",border:"none",display:"flex",cursor:"pointer" }}><Icon d={icons.x} size={19} color="#94A3B8"/></button>
+            </div>
+            {modalEntry&&<p style={{ fontSize:12,color:"#94A3B8",marginBottom:12 }}>{modalEntry.brand?`${modalEntry.brand} `:""}{modalEntry.model}</p>}
+            <label style={FLD}>Review *</label>
+            <textarea value={reviewForm.text} onChange={e=>setReviewForm(p=>({...p,text:e.target.value}))} placeholder="Your honest take…" rows={4} style={{...INP,resize:"vertical"}}/>
+            <label style={FLD}>Your name / WhatsApp name (optional)</label>
+            <input value={reviewForm.name} onChange={e=>setReviewForm(p=>({...p,name:e.target.value}))} placeholder="Anonymous if blank" style={INP}/>
+            <div style={{ display:"flex",gap:10,marginTop:20 }}>
+              <button onClick={()=>setModal(null)} style={{ flex:1,padding:"10px",borderRadius:8,border:"1px solid #E2E8F0",background:"white",color:"#64748B",fontWeight:500,cursor:"pointer",fontSize:13 }}>Cancel</button>
+              <button onClick={modal?.type==="editReview"?submitEditReview:submitReview} disabled={saving} style={{ flex:2,padding:"10px",borderRadius:8,border:"none",background:!reviewForm.text.trim()||saving?"#CBD5E1":"#FF6B35",color:"white",fontWeight:500,fontSize:13,cursor:"pointer" }}>{saving?"Saving…":modal?.type==="editReview"?"Save changes":"Add review"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
